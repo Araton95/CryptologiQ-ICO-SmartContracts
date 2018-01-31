@@ -98,7 +98,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount to send
      */
     function transferFrom(address _from, address _to, uint256 _value) public
-        returns (bool success)
+    returns (bool success)
     {
         require(_value <= allowance[_from][msg.sender]);     // Check allowance
 
@@ -117,7 +117,7 @@ contract TokenERC20 is Ownable
      * @param _value the max amount they can spend
      */
     function approve(address _spender, uint256 _value) public
-        returns (bool success)
+    returns (bool success)
     {
         allowance[msg.sender][_spender] = _value;
 
@@ -134,7 +134,7 @@ contract TokenERC20 is Ownable
      * @param _extraData some extra information to send to the approved contract
      */
     function approveAndCall(address _spender, uint256 _value, bytes _extraData) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         tokenRecipient spender = tokenRecipient(_spender);
 
@@ -152,7 +152,7 @@ contract TokenERC20 is Ownable
      * From MonolithDAO Token.sol
      */
     function increaseApproval (address _spender, uint _addedValue) public
-        returns (bool success)
+    returns (bool success)
     {
         allowance[msg.sender][_spender] = allowance[msg.sender][_spender].add(_addedValue);
 
@@ -162,7 +162,7 @@ contract TokenERC20 is Ownable
     }
 
     function decreaseApproval (address _spender, uint _subtractedValue) public
-        returns (bool success)
+    returns (bool success)
     {
         uint oldValue = allowance[msg.sender][_spender];
 
@@ -185,7 +185,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount of money to burn
      */
     function burn(uint256 _value) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         require(balanceOf[msg.sender] >= _value);   // Check if the sender has enough
 
@@ -207,7 +207,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount of money to burn
      */
     function burnFrom(address _from, uint256 _value) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         require(balanceOf[_from] >= _value);                // Check if the targeted balance is enough
         require(_value <= allowance[_from][msg.sender]);    // Check allowance

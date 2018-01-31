@@ -3,7 +3,7 @@ pragma solidity ^0.4.18;
 library SafeMath
 {
     function mul(uint256 a, uint256 b) internal pure
-        returns (uint256)
+    returns (uint256)
     {
         uint256 c = a * b;
 
@@ -13,7 +13,7 @@ library SafeMath
     }
 
     function div(uint256 a, uint256 b) internal pure
-        returns (uint256)
+    returns (uint256)
     {
         // assert(b > 0); // Solidity automatically throws when dividing by 0
         uint256 c = a / b;
@@ -22,7 +22,7 @@ library SafeMath
     }
 
     function sub(uint256 a, uint256 b) internal pure
-        returns (uint256)
+    returns (uint256)
     {
         assert(b <= a);
 
@@ -30,7 +30,7 @@ library SafeMath
     }
 
     function add(uint256 a, uint256 b) internal pure
-        returns (uint256)
+    returns (uint256)
     {
         uint256 c = a + b;
 
@@ -173,7 +173,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount to send
      */
     function transferFrom(address _from, address _to, uint256 _value) public
-        returns (bool success)
+    returns (bool success)
     {
         require(_value <= allowance[_from][msg.sender]);     // Check allowance
 
@@ -192,7 +192,7 @@ contract TokenERC20 is Ownable
      * @param _value the max amount they can spend
      */
     function approve(address _spender, uint256 _value) public
-        returns (bool success)
+    returns (bool success)
     {
         allowance[msg.sender][_spender] = _value;
 
@@ -209,7 +209,7 @@ contract TokenERC20 is Ownable
      * @param _extraData some extra information to send to the approved contract
      */
     function approveAndCall(address _spender, uint256 _value, bytes _extraData) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         tokenRecipient spender = tokenRecipient(_spender);
 
@@ -227,7 +227,7 @@ contract TokenERC20 is Ownable
      * From MonolithDAO Token.sol
      */
     function increaseApproval (address _spender, uint _addedValue) public
-        returns (bool success)
+    returns (bool success)
     {
         allowance[msg.sender][_spender] = allowance[msg.sender][_spender].add(_addedValue);
 
@@ -237,7 +237,7 @@ contract TokenERC20 is Ownable
     }
 
     function decreaseApproval (address _spender, uint _subtractedValue) public
-        returns (bool success)
+    returns (bool success)
     {
         uint oldValue = allowance[msg.sender][_spender];
 
@@ -260,7 +260,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount of money to burn
      */
     function burn(uint256 _value) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         require(balanceOf[msg.sender] >= _value);   // Check if the sender has enough
 
@@ -282,7 +282,7 @@ contract TokenERC20 is Ownable
      * @param _value the amount of money to burn
      */
     function burnFrom(address _from, uint256 _value) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         require(balanceOf[_from] >= _value);                // Check if the targeted balance is enough
         require(_value <= allowance[_from][msg.sender]);    // Check allowance
@@ -374,6 +374,7 @@ contract CryptologiqCrowdsale is Pauseble
     using SafeMath for uint;
 
     uint public stage = 0;
+    uint256 public weisRaised;  // how many weis was raised on crowdsale
 
     event CrowdSaleFinished(string info);
 
@@ -387,6 +388,63 @@ contract CryptologiqCrowdsale is Pauseble
 
     Ico public ICO;
 
+    /*
+    * Function confirm autosell
+    *
+    */
+    function confirmSell(uint256 _amount) internal view
+    returns(bool)
+    {
+        if (ICO.tokens < _amount) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /*
+    *  Make discount
+    */
+    function countDiscount(uint256 amount) internal
+    returns(uint256)
+    {
+        uint256 _amount = (amount.mul(DEC)).div(buyPrice);
+
+        if (1 == stage) {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
+        else if (2 == stage)
+        {
+            if (now <= ICO.startDate + 1 days)
+            {
+                if (0 == ICO.discountFirstDayICO) {
+                    ICO.discountFirstDayICO = 20;
+                }
+                _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
+            }
+            else
+            {
+                _amount = _amount.add(withDiscount(_amount, ICO.discount));
+            }
+        }
+        else if (3 == stage) {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
+
+        return _amount;
+    }
+
+    /**
+    * Function for change discount if need
+    *
+    */
+    function changeDiscount(uint8 _discount) public onlyOwner
+    returns (bool)
+    {
+        ICO = Ico (ICO.tokens, ICO.startDate, ICO.endDate, _discount, ICO.discountFirstDayICO);
+        return true;
+    }
+
     /**
     * Expanding of the functionality
     *
@@ -396,7 +454,7 @@ contract CryptologiqCrowdsale is Pauseble
     * example: price 1000 tokens by 1 ether = changeRate(1, 1000)
     */
     function changeRate(uint256 _numerator, uint256 _denominator) public onlyOwner
-        returns (bool success)
+    returns (bool success)
     {
         if (_numerator == 0) _numerator = 1;
         if (_denominator == 0) _denominator = 1;
@@ -411,7 +469,7 @@ contract CryptologiqCrowdsale is Pauseble
     *
     */
     function crowdSaleStatus() internal constant
-        returns (string)
+    returns (string)
     {
         if (1 == stage) {
             return "Pre-ICO";
@@ -427,40 +485,42 @@ contract CryptologiqCrowdsale is Pauseble
     }
 
     /*
+    * Seles manager
+    *
+    */
+    function paymentManager(address sender, uint256 value) internal
+    {
+        uint256 discountValue = countDiscount(value);
+        bool conf = confirmSell(discountValue);
+
+        if (conf) {
+
+            sell(sender, discountValue);
+
+            weisRaised = weisRaised.add(value);
+
+            if (now >= ICO.endDate) {
+                pauseInternal();
+                CrowdSaleFinished(crowdSaleStatus()); // if time is up
+            }
+
+        } else {
+
+            sell(sender, ICO.tokens); // sell tokens which has been accessible
+
+            weisRaised = weisRaised.add(value);
+
+            pauseInternal();
+            CrowdSaleFinished(crowdSaleStatus());  // if tokens sold
+        }
+    }
+
+    /*
     * Function for selling tokens in crowd time.
     *
     */
-    function sell(address _investor, uint256 amount) internal
+    function sell(address _investor, uint256 _amount) internal
     {
-        uint256 _amount = (amount.mul(DEC)).div(buyPrice);
-
-        if (1 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
-        }
-        else if (2 == stage)
-        {
-            if (now <= ICO.startDate + 1 days)
-            {
-                  if (0 == ICO.discountFirstDayICO) {
-                      ICO.discountFirstDayICO = 20;
-                  }
-
-                  _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
-            } else {
-                _amount = _amount.add(withDiscount(_amount, ICO.discount));
-            }
-        } else if (3 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
-        }
-
-        if (ICO.tokens < _amount)
-        {
-            CrowdSaleFinished(crowdSaleStatus());
-            pauseInternal();
-
-            revert();
-        }
-
         ICO.tokens = ICO.tokens.sub(_amount);
         avaliableSupply = avaliableSupply.sub(_amount);
 
@@ -479,7 +539,6 @@ contract CryptologiqCrowdsale is Pauseble
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {
         require(_tokens * DEC <= avaliableSupply);  // require to set correct tokens value for crowd
-        startIcoDate = _startDate;
         ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
         stage = stage.add(1);
         unpauseInternal();
@@ -501,7 +560,7 @@ contract CryptologiqCrowdsale is Pauseble
     *
     */
     function withDiscount(uint256 _amount, uint _percent) internal pure
-        returns (uint256)
+    returns (uint256)
     {
         return (_amount.mul(_percent)).div(100);
     }
@@ -509,10 +568,6 @@ contract CryptologiqCrowdsale is Pauseble
 
 contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
 {
-    using SafeMath for uint;
-
-    uint public weisRaised;  // how many weis was raised on crowdsale
-
     /* Cryptologiq tokens Constructor */
     function CryptologiqContract() public TokenERC20(700000000, "Cryptologiq", "LOGIQ") {} //change before send !!!
 
@@ -525,22 +580,10 @@ contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
         assert(msg.value >= 1 ether / 10);
         require(now >= ICO.startDate);
 
-        if (now >= ICO.endDate) {
-            pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus());
-        }
-
-        if (0 != startIcoDate) {
-            if (now < startIcoDate) {
-                revert();
-            } else {
-                startIcoDate = 0;
-            }
-        }
-
         if (paused == false) {
-            sell(msg.sender, msg.value);
-            weisRaised = weisRaised.add(msg.value);
+            paymentManager(msg.sender, msg.value);
+        } else {
+            revert();
         }
     }
 }

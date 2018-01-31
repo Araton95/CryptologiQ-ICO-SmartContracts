@@ -18,7 +18,7 @@ contract TestCryptologiq
 
         uint expected = 700000000000000000000000000;
 
-        Assert.equal(stream.balanceOf(stream), expected, "Contract should have 420000000000000000000000000 Cryptologiq initially");
+        Assert.equal(stream.balanceOf(stream), expected, "Contract should have 700000000000000000000000000 LOGIQ initially");
     }
 
     function testInitialBalanceWithNewCryptologiq() public
@@ -88,7 +88,7 @@ contract TestCryptologiq
     function testBuyTokensWhenIcoFirstStageFirstDay() public
     {
         CryptologiqContract stream = new CryptologiqContract();
-        uint tokensAfterPay = 2300000000000000000;
+        uint tokensAfterPay = 1260000000000000000;
 
         Assert.equal(stream.balanceOf(0x2), 0, "Should be a 0");
 
@@ -96,7 +96,7 @@ contract TestCryptologiq
 
         stream.transferWeb3js(0x2, 2 ether);
 
-        Assert.equal(stream.balanceOf(0x2), tokensAfterPay, "Investor should have a 2300000000000000000 tokens");
+        Assert.equal(stream.balanceOf(0x2), tokensAfterPay, "Investor should have a 1260000000000000000 tokens");
     }
 
    function testBuyTokensWhenIcoFirstStageExceptFirstDay() public
