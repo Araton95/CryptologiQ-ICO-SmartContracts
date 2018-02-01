@@ -110,11 +110,7 @@ contract TokenERC20 is Ownable
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    function TokenERC20(
-        uint256 initialSupply,
-        string tokenName,
-        string tokenSymbol
-    ) public
+    function TokenERC20( uint256 initialSupply, string tokenName, string tokenSymbol) public
     {
         totalSupply = initialSupply.mul(DEC);  // Update total supply with the decimal amount
         balanceOf[this] = totalSupply;         // Give the creator all initial tokens
@@ -430,6 +426,9 @@ contract CryptologiqCrowdsale is Pauseble
         else if (3 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
+        else if (4 == stage) {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
 
         return _amount;
     }
@@ -472,12 +471,14 @@ contract CryptologiqCrowdsale is Pauseble
     returns (string)
     {
         if (1 == stage) {
-            return "Pre-ICO";
+            return "Private sale";
         } else if(2 == stage) {
-            return "ICO first stage";
+            return "Pre-ICO";
         } else if (3 == stage) {
+            return "ICO first stage";
+        } else if (4 == stage) {
             return "ICO second stage";
-        } else if (4 >= stage) {
+        }else if (5 >= stage) {
             return "feature stage";
         }
 
@@ -533,8 +534,8 @@ contract CryptologiqCrowdsale is Pauseble
     * @param _tokens - How much tokens will have the crowdsale - amount humanlike value (10000)
     * @param _startDate - When crowdsale will be start - unix timestamp (1512231703 )
     * @param _endDate - When crowdsale will be end - humanlike value (7) same as 7 days
-    * @param _discount - Discount for the crowd - humanlive value (7) same as 7 %
-    * @param _discount - Discount for the crowds first day - humanlive value (7) same as 7 %
+    * @param _discount - Discount for the crowd - humanlike value (7) same as 7 %
+    * @param _discount - Discount for the crowds first day - humanlike value (7) same as 7 %
     */
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {

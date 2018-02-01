@@ -64,6 +64,9 @@ contract CryptologiqCrowdsale is Pauseble
         else if (3 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
+        else if (4 == stage) {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
 
         return _amount;
     }
@@ -106,12 +109,14 @@ contract CryptologiqCrowdsale is Pauseble
     returns (string)
     {
         if (1 == stage) {
-            return "Pre-ICO";
+            return "Private sale";
         } else if(2 == stage) {
-            return "ICO first stage";
+            return "Pre-ICO";
         } else if (3 == stage) {
+            return "ICO first stage";
+        } else if (4 == stage) {
             return "ICO second stage";
-        } else if (4 >= stage) {
+        }else if (5 >= stage) {
             return "feature stage";
         }
 
