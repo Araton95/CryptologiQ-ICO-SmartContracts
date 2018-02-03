@@ -96,24 +96,40 @@ contract TokenERC20 is Ownable
     uint256 public avaliableSupply;
     uint256 public buyPrice = 1000000000000000000 wei;
 
+    address public companyWallet = 0x126c901B9B2Dc5088a9FbAcef94bFcECE4686aAF;
+    address public internalExchangeWallet = 0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB;
+    address public bountyWallet = 0xa156EbD3F6025bF543E459661E6665544F5c31d7;
+    address public tournamentsWallet = 0x3eF8Dbe819B90C33EF70c0cF05ddDB27E20B8683;
+
+
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
+
+    /* freezeAccount() frozen() */
+    mapping (address => bool) frozenAccount;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Burn(address indexed from, uint256 value);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+    event FrozenFunds(address target, bool frozen);
 
     /**
-     * Constrctor function
+     * Constructor function
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
     function TokenERC20( uint256 initialSupply, string tokenName, string tokenSymbol) public
     {
         totalSupply = initialSupply.mul(DEC);  // Update total supply with the decimal amount
-        balanceOf[this] = totalSupply;         // Give the creator all initial tokens
+
+        balanceOf[this] = (totalSupply.mul(60)).div(100);           // Send 60% tokens to smart contract wallet
+        balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);  // Send 20% tokens to company wallet
+        balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% tokens to internal exchange wallet
+        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to bounty wallet
+        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);   // Send 5% of tokens to tournaments wallet
+
         avaliableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
         symbol = tokenSymbol;                  // Set the symbol for display purposes
@@ -128,6 +144,9 @@ contract TokenERC20 is Ownable
      */
     function _transfer(address _from, address _to, uint256 _value) internal
     {
+        // Check if not frozen //
+        require(!frozenAccount[msg.sender]);
+
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -171,6 +190,9 @@ contract TokenERC20 is Ownable
     function transferFrom(address _from, address _to, uint256 _value) public
     returns (bool success)
     {
+        // Check if not frozen //
+        require(!frozenAccount[msg.sender]);
+
         require(_value <= allowance[_from][msg.sender]);     // Check allowance
 
         allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);
@@ -246,6 +268,21 @@ contract TokenERC20 is Ownable
         Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
 
         return true;
+    }
+
+    /**
+     * Owner can set any account into freeze state. It is helpful in case if account holder has
+     * lost his key and he want administrator to freeze account until account key is recovered
+     * @param target The account address
+     * @param freeze The state of account
+     */
+    function freezeAccount(address target, bool freeze) public onlyOwner {
+        frozenAccount[target] = freeze;
+        FrozenFunds(target, freeze);
+    }
+
+    function frozen(address _target) view public returns (bool) {
+        return frozenAccount[_target];
     }
 
     /**
