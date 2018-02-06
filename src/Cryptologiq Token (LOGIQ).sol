@@ -93,7 +93,7 @@ contract TokenERC20 is Ownable
     uint256 public decimals = 18;
     uint256 DEC = 10 ** uint256(decimals);
     uint256 public totalSupply;
-    uint256 public avaliableSupply;
+    uint256 public availableSupply;
     uint256 public buyPrice = 1000000000000000000 wei;
 
     address public companyWallet = 0x126c901B9B2Dc5088a9FbAcef94bFcECE4686aAF;
@@ -130,7 +130,7 @@ contract TokenERC20 is Ownable
         balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to bounty wallet
         balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);   // Send 5% of tokens to tournaments wallet
 
-        avaliableSupply = balanceOf[this];     // Show how much tokens on contract
+        availableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
         symbol = tokenSymbol;                  // Set the symbol for display purposes
     }
@@ -299,7 +299,7 @@ contract TokenERC20 is Ownable
 
         balanceOf[msg.sender] = balanceOf[msg.sender].sub(_value);  // Subtract from the sender
         totalSupply = totalSupply.sub(_value);                      // Updates totalSupply
-        avaliableSupply = avaliableSupply.sub(_value);
+        availableSupply = availableSupply.sub(_value);
 
         Burn(msg.sender, _value);
 
@@ -323,7 +323,7 @@ contract TokenERC20 is Ownable
         balanceOf[_from] = balanceOf[_from].sub(_value);    // Subtract from the targeted balance
         allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);    // Subtract from the sender's allowance
         totalSupply = totalSupply.sub(_value);              // Update totalSupply
-        avaliableSupply = avaliableSupply.sub(_value);
+        availableSupply = availableSupply.sub(_value);
 
         Burn(_from, _value);
 
@@ -397,7 +397,7 @@ contract ERC20Extending is TokenERC20
     */
     function transferTokensFromContract(address _to, uint256 _value) public onlyOwner
     {
-        avaliableSupply = avaliableSupply.sub(_value);
+        availableSupply = availableSupply.sub(_value);
         _transfer(this, _to, _value);
     }
 }
@@ -438,7 +438,7 @@ contract CryptologiqCrowdsale is Pauseble
     /*
     *  Make discount
     */
-    function countDiscount(uint256 amount) internal
+    function countDiscount(uint256 amount) internal view
     returns(uint256)
     {
         uint256 _amount = (amount.mul(DEC)).div(buyPrice);
@@ -448,20 +448,17 @@ contract CryptologiqCrowdsale is Pauseble
         }
         else if (2 == stage)
         {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
+        else if (3 == stage) {
             if (now <= ICO.startDate + 1 days)
             {
-                if (0 == ICO.discountFirstDayICO) {
-                    ICO.discountFirstDayICO = 20;
-                }
                 _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
             }
             else
             {
                 _amount = _amount.add(withDiscount(_amount, ICO.discount));
             }
-        }
-        else if (3 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (4 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
@@ -487,7 +484,7 @@ contract CryptologiqCrowdsale is Pauseble
     * @param _numerator - Numerator - value (10000)
     * @param _denominator - Denominator - value (10000)
     *
-    * example: price 1000 tokens by 1 ether = changeRate(1, 1000)
+    * example: price 10000 tokens by 1 ether = changeRate(1, 10000)
     */
     function changeRate(uint256 _numerator, uint256 _denominator) public onlyOwner
     returns (bool success)
@@ -523,7 +520,7 @@ contract CryptologiqCrowdsale is Pauseble
     }
 
     /*
-    * Seles manager
+    * Sales manager
     *
     */
     function paymentManager(address sender, uint256 value) internal
@@ -560,7 +557,7 @@ contract CryptologiqCrowdsale is Pauseble
     function sell(address _investor, uint256 _amount) internal
     {
         ICO.tokens = ICO.tokens.sub(_amount);
-        avaliableSupply = avaliableSupply.sub(_amount);
+        availableSupply = availableSupply.sub(_amount);
 
         _transfer(this, _investor, _amount);
     }
@@ -576,7 +573,7 @@ contract CryptologiqCrowdsale is Pauseble
     */
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {
-        require(_tokens * DEC <= avaliableSupply);  // require to set correct tokens value for crowd
+        require(_tokens * DEC <= availableSupply);  // require to set correct tokens value for crowd
         ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
         stage = stage.add(1);
         unpauseInternal();
@@ -607,7 +604,7 @@ contract CryptologiqCrowdsale is Pauseble
 contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
 {
     /* Cryptologiq tokens Constructor */
-    function CryptologiqContract() public TokenERC20(700000000, "Cryptologiq", "LOGIQ") {} //change before send !!!
+    function CryptologiqContract() public TokenERC20(700000000, "CryptologiQ", "LOGIQ") {}
 
     /**
     * Function payments handler

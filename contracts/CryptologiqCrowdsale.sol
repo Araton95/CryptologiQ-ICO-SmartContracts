@@ -39,7 +39,7 @@ contract CryptologiqCrowdsale is Pauseble
     /*
     *  Make discount
     */
-    function countDiscount(uint256 amount) internal
+    function countDiscount(uint256 amount) internal view
     returns(uint256)
     {
         uint256 _amount = (amount.mul(DEC)).div(buyPrice);
@@ -49,20 +49,17 @@ contract CryptologiqCrowdsale is Pauseble
         }
         else if (2 == stage)
         {
+            _amount = _amount.add(withDiscount(_amount, ICO.discount));
+        }
+        else if (3 == stage) {
             if (now <= ICO.startDate + 1 days)
             {
-                if (0 == ICO.discountFirstDayICO) {
-                    ICO.discountFirstDayICO = 20;
-                }
                 _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
             }
             else
             {
                 _amount = _amount.add(withDiscount(_amount, ICO.discount));
             }
-        }
-        else if (3 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (4 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
@@ -124,7 +121,7 @@ contract CryptologiqCrowdsale is Pauseble
     }
 
     /*
-    * Seles manager
+    * Sales manager
     *
     */
     function paymentManager(address sender, uint256 value) internal
@@ -161,7 +158,7 @@ contract CryptologiqCrowdsale is Pauseble
     function sell(address _investor, uint256 _amount) internal
     {
         ICO.tokens = ICO.tokens.sub(_amount);
-        avaliableSupply = avaliableSupply.sub(_amount);
+        availableSupply = availableSupply.sub(_amount);
 
         _transfer(this, _investor, _amount);
     }
@@ -177,7 +174,7 @@ contract CryptologiqCrowdsale is Pauseble
     */
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {
-        require(_tokens * DEC <= avaliableSupply);  // require to set correct tokens value for crowd
+        require(_tokens * DEC <= availableSupply);  // require to set correct tokens value for crowd
         ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
         stage = stage.add(1);
         unpauseInternal();

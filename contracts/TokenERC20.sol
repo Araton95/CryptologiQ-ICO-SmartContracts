@@ -18,7 +18,7 @@ contract TokenERC20 is Ownable
     uint256 public decimals = 18;
     uint256 DEC = 10 ** uint256(decimals);
     uint256 public totalSupply;
-    uint256 public avaliableSupply;
+    uint256 public availableSupply;
     uint256 public buyPrice = 1000000000000000000 wei;
 
     address public companyWallet = 0x126c901B9B2Dc5088a9FbAcef94bFcECE4686aAF;
@@ -55,7 +55,7 @@ contract TokenERC20 is Ownable
         balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to bounty wallet
         balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);   // Send 5% of tokens to tournaments wallet
 
-        avaliableSupply = balanceOf[this];     // Show how much tokens on contract
+        availableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
         symbol = tokenSymbol;                  // Set the symbol for display purposes
     }
@@ -224,7 +224,7 @@ contract TokenERC20 is Ownable
 
         balanceOf[msg.sender] = balanceOf[msg.sender].sub(_value);  // Subtract from the sender
         totalSupply = totalSupply.sub(_value);                      // Updates totalSupply
-        avaliableSupply = avaliableSupply.sub(_value);
+        availableSupply = availableSupply.sub(_value);
 
         Burn(msg.sender, _value);
 
@@ -248,7 +248,7 @@ contract TokenERC20 is Ownable
         balanceOf[_from] = balanceOf[_from].sub(_value);    // Subtract from the targeted balance
         allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);    // Subtract from the sender's allowance
         totalSupply = totalSupply.sub(_value);              // Update totalSupply
-        avaliableSupply = avaliableSupply.sub(_value);
+        availableSupply = availableSupply.sub(_value);
 
         Burn(_from, _value);
 
