@@ -5,13 +5,10 @@
     . TotalSupply
     . TransferFrom
     . ICO
-    . TransferEthFromContract
     . Decimals
     . Paused
     . Pause
     . Unpause
-    . Burn
-    . BurnFrom
     . StartCrowd
     . DecreaseApproval
     . BalanceOf
@@ -33,3 +30,12 @@
     . TransferWeb3js
     . TransferOwnership
 
+    +   
+    
+    . Refund
+    . SoftCap / HardCap
+    . Finish
+    . Burn (Public event)
+    . Finish    
+    . WidthrawOwner
+    
