@@ -96,19 +96,20 @@ contract TokenERC20 is Ownable
     uint256 public availableSupply;
     uint256 public buyPrice = 1000000000000000000 wei;
 
+    uint public icoEndTime = 1530403200; // ICO end time - Sunday, 1 July 2018, 00:00:00.
+    bool burned;
+
     address public companyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
     address public internalExchangeWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
     address public bountyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
     address public tournamentsWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
 
-    uint public icoEndTime = 1530403200; // Time after ICO, when tokens may be transferred. Sunday, 1 July 2018 10:00:00 GMT
-    bool burned;
 
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
 
-    /* freezeAccount() frozen() */
+    // freezeAccount() frozen()
     mapping (address => bool) frozenAccount;
 
     // This generates a public event on the blockchain that will notify clients
@@ -126,11 +127,11 @@ contract TokenERC20 is Ownable
     {
         totalSupply = initialSupply.mul(DEC);  // Update total supply with the decimal amount
 
-        balanceOf[this] = (totalSupply.mul(60)).div(100);           // Send 60% tokens to smart contract wallet
-        balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);  // Send 20% tokens to company wallet
-        balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% tokens to internal exchange wallet
-        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to bounty wallet
-        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);   // Send 5% of tokens to tournaments wallet
+        balanceOf[this] = (totalSupply.mul(60)).div(100);                    // Send 60% of tokens to smart contract wallet      420,000,000 LOGIQ
+        balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);           // Send 20% of tokens to company wallet             140,000,000 LOGIQ
+        balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% of tokens to internal exchange wallet   70,000,000 LOGIQ
+        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);             // Send 5% of tokens to bounty wallet               35,000,000 LOGIQ
+        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to tournaments wallet          35,000,000 LOGIQ
 
         availableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
@@ -146,9 +147,8 @@ contract TokenERC20 is Ownable
      */
     function _transfer(address _from, address _to, uint256 _value) internal
     {
-        // Check if not frozen //
+        // Check if not frozen
         require(!frozenAccount[msg.sender]);
-
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -239,7 +239,7 @@ contract TokenERC20 is Ownable
     }
 
     /**
-     * approve should be called when allowed[_spender] == 0. To increment
+     * Approve should be called when allowed[_spender] == 0. To increment
      * allowed value is better to use this function to avoid 2 calls (and wait until
      * the first transaction is mined)
      * From MonolithDAO Token.sol
@@ -276,12 +276,14 @@ contract TokenERC20 is Ownable
      * @param target The account address
      * @param freeze The state of account
      */
-    function freezeAccount(address target, bool freeze) public onlyOwner {
+    function freezeAccount(address target, bool freeze) public onlyOwner
+    {
         frozenAccount[target] = freeze;
         FrozenFunds(target, freeze);
     }
 
-    function frozen(address _target) view public returns (bool) {
+    function frozen(address _target) view public returns (bool)
+    {
         return frozenAccount[_target];
     }
 
@@ -297,7 +299,8 @@ contract TokenERC20 is Ownable
     *  Anybody may burn the tokens after ICO ended, but only once.
     *  this ensures that the owner will not posses a majority of the tokens.
     */
-    function burn() public {
+    function burn() public
+    {
         // If tokens have not been burned already and the crowdsale ended
         if (!burned && now > icoEndTime) {
             totalSupply = totalSupply.sub(availableSupply);
@@ -359,17 +362,6 @@ contract ERC20Extending is TokenERC20
     using SafeMath for uint;
 
     /**
-    * Function for transfer ethereum from contract to any address
-    *
-    * @param _to - address of the recipient
-    * @param amount - ethereum
-    */
-    function transferEthFromContract(address _to, uint256 amount) public onlyOwner
-    {
-        _to.transfer(amount);
-    }
-
-    /**
     * Function for transfer tokens from contract to any address
     *
     */
@@ -385,9 +377,22 @@ contract CryptologiqCrowdsale is Pauseble
     using SafeMath for uint;
 
     uint public stage = 0;
+    uint public softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
+    uint public hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
+    bool public softcapReached;
+    bool public hardcapReached;
+    bool public refundIsAvailable;
     uint256 public weisRaised;  // how many weis was raised on crowdsale
+    uint256 public tokensSold = 0;  // how many tokens was sold on crowdsale
 
+    event SoftcapReached();
+    event HardcapReached();
     event CrowdSaleFinished(string info);
+    event RefundIsAvailable();
+
+    address public ownerWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+
+    mapping(address => uint) public balances;
 
     struct Ico {
         uint256 tokens;             // Tokens in crowdsale
@@ -420,12 +425,12 @@ contract CryptologiqCrowdsale is Pauseble
     returns(uint256)
     {
         uint256 _amount = (amount.mul(DEC)).div(buyPrice);
+        require(_amount > 0);
 
         if (1 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
-        else if (2 == stage)
-        {
+        else if (2 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (3 == stage) {
@@ -462,7 +467,7 @@ contract CryptologiqCrowdsale is Pauseble
     * @param _numerator - Numerator - value (10000)
     * @param _denominator - Denominator - value (10000)
     *
-    * example: price 10000 tokens by 1 ether = changeRate(1, 10000)
+    * example: price 1000 tokens by 1 ether = changeRate(1, 1000)
     */
     function changeRate(uint256 _numerator, uint256 _denominator) public onlyOwner
     returns (bool success)
@@ -484,13 +489,17 @@ contract CryptologiqCrowdsale is Pauseble
     {
         if (1 == stage) {
             return "Private sale";
-        } else if(2 == stage) {
+        }
+        else if(2 == stage) {
             return "Pre-ICO";
-        } else if (3 == stage) {
+        }
+        else if (3 == stage) {
             return "ICO first stage";
-        } else if (4 == stage) {
+        }
+        else if (4 == stage) {
             return "ICO second stage";
-        }else if (5 >= stage) {
+        }
+        else if (5 >= stage) {
             return "feature stage";
         }
 
@@ -504,27 +513,25 @@ contract CryptologiqCrowdsale is Pauseble
     function paymentManager(address sender, uint256 value) internal
     {
         uint256 discountValue = countDiscount(value);
-        bool conf = confirmSell(discountValue);
+        require(confirmSell(discountValue));
 
-        if (conf) {
+        sell(sender, discountValue);
+        weisRaised = weisRaised.add(value);
+        tokensSold = tokensSold.add(discountValue);
 
-            sell(sender, discountValue);
-
-            weisRaised = weisRaised.add(value);
-
-            if (now >= ICO.endDate) {
-                pauseInternal();
-                CrowdSaleFinished(crowdSaleStatus()); // if time is up
-            }
-
-        } else {
-
-            sell(sender, ICO.tokens); // sell tokens which has been accessible
-
-            weisRaised = weisRaised.add(value);
-
+        if (now >= ICO.endDate) {
             pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus());  // if tokens sold
+            CrowdSaleFinished(crowdSaleStatus()); // if time is up
+        }
+
+        if (tokensSold >= softcap && !softcapReached) {
+            SoftcapReached();
+            softcapReached = true;
+        }
+
+        if (tokensSold >= hardcap) {
+            HardcapReached();
+            hardcapReached = true;
         }
     }
 
@@ -546,8 +553,8 @@ contract CryptologiqCrowdsale is Pauseble
     * @param _tokens - How much tokens will have the crowdsale - amount humanlike value (10000)
     * @param _startDate - When crowdsale will be start - unix timestamp (1512231703 )
     * @param _endDate - When crowdsale will be end - humanlike value (7) same as 7 days
-    * @param _discount - Discount for the crowd - humanlike value (7) same as 7 %
-    * @param _discount - Discount for the crowds first day - humanlike value (7) same as 7 %
+    * @param _discount - Discount for the crowd - humanlive value (7) same as 7 %
+    * @param _discount - Discount for the crowds first day - humanlive value (7) same as 7 %
     */
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {
@@ -576,6 +583,30 @@ contract CryptologiqCrowdsale is Pauseble
     returns (uint256)
     {
         return (_amount.mul(_percent)).div(100);
+    }
+
+    function refund() public
+    {
+        require(refundIsAvailable && balances[msg.sender] > 0);
+        uint value = balances[msg.sender];
+        balances[msg.sender] = 0;
+        msg.sender.transfer(value);
+    }
+
+    function widthrawOwner(uint256 amount) public onlyOwner
+    {
+        require(softcapReached);
+        ownerWallet.transfer(amount);
+    }
+
+    function finish() public onlyOwner
+    {
+        if (availableSupply < softcap) {
+            RefundIsAvailable();
+            refundIsAvailable = true;
+        } else {
+            widthrawOwner(this.balance);
+        }
     }
 }
 

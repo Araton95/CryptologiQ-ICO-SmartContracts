@@ -21,22 +21,25 @@ contract TokenERC20 is Ownable
     uint256 public availableSupply;
     uint256 public buyPrice = 1000000000000000000 wei;
 
-    address public companyWallet = 0x126c901B9B2Dc5088a9FbAcef94bFcECE4686aAF;
-    address public internalExchangeWallet = 0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB;
-    address public bountyWallet = 0xa156EbD3F6025bF543E459661E6665544F5c31d7;
-    address public tournamentsWallet = 0x3eF8Dbe819B90C33EF70c0cF05ddDB27E20B8683;
+    uint public icoEndTime = 1530403200; // ICO end time - Sunday, 1 July 2018, 00:00:00.
+    bool burned;
+
+    address public companyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+    address public internalExchangeWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+    address public bountyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+    address public tournamentsWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
 
 
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
 
-    /* freezeAccount() frozen() */
+    // freezeAccount() frozen()
     mapping (address => bool) frozenAccount;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Burn(address indexed from, uint256 value);
+    event Burned(uint amount);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     event FrozenFunds(address target, bool frozen);
 
@@ -49,11 +52,11 @@ contract TokenERC20 is Ownable
     {
         totalSupply = initialSupply.mul(DEC);  // Update total supply with the decimal amount
 
-        balanceOf[this] = (totalSupply.mul(60)).div(100);           // Send 60% tokens to smart contract wallet
-        balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);  // Send 20% tokens to company wallet
-        balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% tokens to internal exchange wallet
-        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to bounty wallet
-        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);   // Send 5% of tokens to tournaments wallet
+        balanceOf[this] = (totalSupply.mul(60)).div(100);                    // Send 60% of tokens to smart contract wallet      420,000,000 LOGIQ
+        balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);           // Send 20% of tokens to company wallet             140,000,000 LOGIQ
+        balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% of tokens to internal exchange wallet   70,000,000 LOGIQ
+        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);             // Send 5% of tokens to bounty wallet               35,000,000 LOGIQ
+        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to tournaments wallet          35,000,000 LOGIQ
 
         availableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
@@ -69,9 +72,8 @@ contract TokenERC20 is Ownable
      */
     function _transfer(address _from, address _to, uint256 _value) internal
     {
-        // Check if not frozen //
+        // Check if not frozen
         require(!frozenAccount[msg.sender]);
-
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -162,7 +164,7 @@ contract TokenERC20 is Ownable
     }
 
     /**
-     * approve should be called when allowed[_spender] == 0. To increment
+     * Approve should be called when allowed[_spender] == 0. To increment
      * allowed value is better to use this function to avoid 2 calls (and wait until
      * the first transaction is mined)
      * From MonolithDAO Token.sol
@@ -199,57 +201,39 @@ contract TokenERC20 is Ownable
      * @param target The account address
      * @param freeze The state of account
      */
-    function freezeAccount(address target, bool freeze) public onlyOwner {
+    function freezeAccount(address target, bool freeze) public onlyOwner
+    {
         frozenAccount[target] = freeze;
         FrozenFunds(target, freeze);
     }
 
-    function frozen(address _target) view public returns (bool) {
+    function frozen(address _target) view public returns (bool)
+    {
         return frozenAccount[_target];
     }
 
     /**
-     * Destroy tokens
-     *
-     * Remove `_value` tokens from the system irreversibly
-     *
-     * @param _value the amount of money to burn
-     */
-    function burn(uint256 _value) public onlyOwner
-    returns (bool success)
+    *  Burn tokens
+    *
+    *  Called when ICO is closed. Burns the remaining tokens except the tokens reserved:
+    *  - for company              (20% / 140.000.000)
+    *  - for internal exchanges   (10% / 70.000.000)
+    *  - for bounty community     (5% / 35.000.000)
+    *  - for tournaments          (5% / 35.000.000)
+    *
+    *  Anybody may burn the tokens after ICO ended, but only once.
+    *  this ensures that the owner will not posses a majority of the tokens.
+    */
+    function burn() public
     {
-        require(balanceOf[msg.sender] >= _value);   // Check if the sender has enough
-
-        balanceOf[msg.sender] = balanceOf[msg.sender].sub(_value);  // Subtract from the sender
-        totalSupply = totalSupply.sub(_value);                      // Updates totalSupply
-        availableSupply = availableSupply.sub(_value);
-
-        Burn(msg.sender, _value);
-
-        return true;
+        // If tokens have not been burned already and the crowdsale ended
+        if (!burned && now > icoEndTime) {
+            totalSupply = totalSupply.sub(availableSupply);
+            balanceOf[this] = balanceOf[this].sub(availableSupply);
+            Burned(availableSupply);
+            burned = true;
+            availableSupply = 0;
+        }
     }
 
-    /**
-     * Destroy tokens from other account
-     *
-     * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
-     *
-     * @param _from the address of the sender
-     * @param _value the amount of money to burn
-     */
-    function burnFrom(address _from, uint256 _value) public onlyOwner
-    returns (bool success)
-    {
-        require(balanceOf[_from] >= _value);                // Check if the targeted balance is enough
-        require(_value <= allowance[_from][msg.sender]);    // Check allowance
-
-        balanceOf[_from] = balanceOf[_from].sub(_value);    // Subtract from the targeted balance
-        allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);    // Subtract from the sender's allowance
-        totalSupply = totalSupply.sub(_value);              // Update totalSupply
-        availableSupply = availableSupply.sub(_value);
-
-        Burn(_from, _value);
-
-        return true;
-    }
 }

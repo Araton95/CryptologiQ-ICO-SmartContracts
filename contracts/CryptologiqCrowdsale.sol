@@ -8,9 +8,22 @@ contract CryptologiqCrowdsale is Pauseble
     using SafeMath for uint;
 
     uint public stage = 0;
+    uint public softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
+    uint public hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
+    bool public softcapReached;
+    bool public hardcapReached;
+    bool public refundIsAvailable;
     uint256 public weisRaised;  // how many weis was raised on crowdsale
+    uint256 public tokensSold = 0;  // how many tokens was sold on crowdsale
 
+    event SoftcapReached();
+    event HardcapReached();
     event CrowdSaleFinished(string info);
+    event RefundIsAvailable();
+
+    address public ownerWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+
+    mapping(address => uint) public balances;
 
     struct Ico {
         uint256 tokens;             // Tokens in crowdsale
@@ -43,12 +56,12 @@ contract CryptologiqCrowdsale is Pauseble
     returns(uint256)
     {
         uint256 _amount = (amount.mul(DEC)).div(buyPrice);
+        require(_amount > 0);
 
         if (1 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
-        else if (2 == stage)
-        {
+        else if (2 == stage) {
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (3 == stage) {
@@ -107,13 +120,17 @@ contract CryptologiqCrowdsale is Pauseble
     {
         if (1 == stage) {
             return "Private sale";
-        } else if(2 == stage) {
+        }
+        else if(2 == stage) {
             return "Pre-ICO";
-        } else if (3 == stage) {
+        }
+        else if (3 == stage) {
             return "ICO first stage";
-        } else if (4 == stage) {
+        }
+        else if (4 == stage) {
             return "ICO second stage";
-        }else if (5 >= stage) {
+        }
+        else if (5 >= stage) {
             return "feature stage";
         }
 
@@ -127,27 +144,25 @@ contract CryptologiqCrowdsale is Pauseble
     function paymentManager(address sender, uint256 value) internal
     {
         uint256 discountValue = countDiscount(value);
-        bool conf = confirmSell(discountValue);
+        require(confirmSell(discountValue));
 
-        if (conf) {
+        sell(sender, discountValue);
+        weisRaised = weisRaised.add(value);
+        tokensSold = tokensSold.add(discountValue);
 
-            sell(sender, discountValue);
-
-            weisRaised = weisRaised.add(value);
-
-            if (now >= ICO.endDate) {
-                pauseInternal();
-                CrowdSaleFinished(crowdSaleStatus()); // if time is up
-            }
-
-        } else {
-
-            sell(sender, ICO.tokens); // sell tokens which has been accessible
-
-            weisRaised = weisRaised.add(value);
-
+        if (now >= ICO.endDate) {
             pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus());  // if tokens sold
+            CrowdSaleFinished(crowdSaleStatus()); // if time is up
+        }
+
+        if (tokensSold >= softcap && !softcapReached) {
+            SoftcapReached();
+            softcapReached = true;
+        }
+
+        if (tokensSold >= hardcap) {
+            HardcapReached();
+            hardcapReached = true;
         }
     }
 
@@ -199,5 +214,29 @@ contract CryptologiqCrowdsale is Pauseble
     returns (uint256)
     {
         return (_amount.mul(_percent)).div(100);
+    }
+
+    function refund() public
+    {
+        require(refundIsAvailable && balances[msg.sender] > 0);
+        uint value = balances[msg.sender];
+        balances[msg.sender] = 0;
+        msg.sender.transfer(value);
+    }
+
+    function widthrawOwner(uint256 amount) public onlyOwner
+    {
+        require(softcapReached);
+        ownerWallet.transfer(amount);
+    }
+
+    function finish() public onlyOwner
+    {
+        if (availableSupply < softcap) {
+            RefundIsAvailable();
+            refundIsAvailable = true;
+        } else {
+            widthrawOwner(this.balance);
+        }
     }
 }

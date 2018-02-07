@@ -7,17 +7,6 @@ contract ERC20Extending is TokenERC20
     using SafeMath for uint;
 
     /**
-    * Function for transfer ethereum from contract to any address
-    *
-    * @param _to - address of the recipient
-    * @param amount - ethereum
-    */
-    function transferEthFromContract(address _to, uint256 amount) public onlyOwner
-    {
-        _to.transfer(amount);
-    }
-
-    /**
     * Function for transfer tokens from contract to any address
     *
     */
