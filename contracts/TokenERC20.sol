@@ -115,9 +115,7 @@ contract TokenERC20 is Ownable
     function transferFrom(address _from, address _to, uint256 _value) public
     returns (bool success)
     {
-        // Check if not frozen //
-        require(!frozenAccount[msg.sender]);
-
+        require(!frozenAccount[msg.sender]);                 // Check if not frozen
         require(_value <= allowance[_from][msg.sender]);     // Check allowance
 
         allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);
