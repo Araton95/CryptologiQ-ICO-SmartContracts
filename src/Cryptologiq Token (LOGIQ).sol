@@ -108,8 +108,6 @@ contract TokenERC20 is Ownable
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
-
-    // freezeAccount() frozen()
     mapping (address => bool) frozenAccount;
 
     // This generates a public event on the blockchain that will notify clients
@@ -130,8 +128,8 @@ contract TokenERC20 is Ownable
         balanceOf[this] = (totalSupply.mul(60)).div(100);                    // Send 60% of tokens to smart contract wallet      420,000,000 LOGIQ
         balanceOf[companyWallet] = (totalSupply.mul(20)).div(100);           // Send 20% of tokens to company wallet             140,000,000 LOGIQ
         balanceOf[internalExchangeWallet] = (totalSupply.mul(10)).div(100);  // Send 10% of tokens to internal exchange wallet   70,000,000 LOGIQ
-        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);             // Send 5% of tokens to bounty wallet               35,000,000 LOGIQ
-        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);        // Send 5% of tokens to tournaments wallet          35,000,000 LOGIQ
+        balanceOf[bountyWallet] = (totalSupply.mul(5)).div(100);             // Send 5%  of tokens to bounty wallet              35,000,000 LOGIQ
+        balanceOf[tournamentsWallet] = (totalSupply.mul(5)).div(100);        // Send 5%  of tokens to tournaments wallet         35,000,000 LOGIQ
 
         availableSupply = balanceOf[this];     // Show how much tokens on contract
         name = tokenName;                      // Set the name for display purposes
@@ -306,8 +304,8 @@ contract TokenERC20 is Ownable
             totalSupply = totalSupply.sub(availableSupply);
             balanceOf[this] = balanceOf[this].sub(availableSupply);
             Burned(availableSupply);
-            burned = true;
             availableSupply = 0;
+            burned = true;
         }
     }
 
