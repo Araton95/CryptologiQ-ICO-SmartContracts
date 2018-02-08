@@ -11,7 +11,6 @@ contract CryptologiqCrowdsale is Pauseble
     uint public softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
     uint public hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
     bool public softcapReached;
-    bool public hardcapReached;
     bool public refundIsAvailable;
     uint256 public weisRaised;  // how many weis was raised on crowdsale
     uint256 public tokensSold = 0;  // how many tokens was sold on crowdsale
@@ -162,7 +161,6 @@ contract CryptologiqCrowdsale is Pauseble
 
         if (tokensSold >= hardcap) {
             HardcapReached();
-            hardcapReached = true;
         }
     }
 
@@ -220,8 +218,8 @@ contract CryptologiqCrowdsale is Pauseble
     {
         require(refundIsAvailable && balances[msg.sender] > 0);
         uint value = balances[msg.sender];
-        balances[msg.sender] = 0;
         msg.sender.transfer(value);
+        balances[msg.sender] = 0;
     }
 
     function widthrawOwner(uint256 amount) public onlyOwner

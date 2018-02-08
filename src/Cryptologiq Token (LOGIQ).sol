@@ -308,7 +308,6 @@ contract TokenERC20 is Ownable
             burned = true;
         }
     }
-
 }
 
 contract Pauseble is TokenERC20
@@ -517,11 +516,6 @@ contract CryptologiqCrowdsale is Pauseble
         weisRaised = weisRaised.add(value);
         tokensSold = tokensSold.add(discountValue);
 
-        if (now >= ICO.endDate) {
-            pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus()); // if time is up
-        }
-
         if (tokensSold >= softcap && !softcapReached) {
             SoftcapReached();
             softcapReached = true;
@@ -619,8 +613,13 @@ contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
     */
     function () public payable
     {
-        assert(msg.value >= 1 ether / 10);
+        assert(msg.value >= 1 ether / 100);
         require(now >= ICO.startDate);
+
+        if ((paused == false) && (now <= ICO.endDate)) {
+            pauseInternal();
+            CrowdSaleFinished(crowdSaleStatus());
+        }
 
         if (paused == false) {
             paymentManager(msg.sender, msg.value);
