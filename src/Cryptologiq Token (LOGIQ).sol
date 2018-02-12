@@ -1,19 +1,20 @@
 pragma solidity ^0.4.18;
 
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+
 library SafeMath
 {
-    function mul(uint256 a, uint256 b) internal pure
-    returns (uint256)
+    function mul(uint256 a, uint256 b) internal pure returns (uint256)
     {
         uint256 c = a * b;
-
         assert(a == 0 || c / a == b);
-
         return c;
     }
 
-    function div(uint256 a, uint256 b) internal pure
-    returns (uint256)
+    function div(uint256 a, uint256 b) internal pure returns (uint256)
     {
         // assert(b > 0); // Solidity automatically throws when dividing by 0
         uint256 c = a / b;
@@ -21,21 +22,16 @@ library SafeMath
         return c;
     }
 
-    function sub(uint256 a, uint256 b) internal pure
-    returns (uint256)
+    function sub(uint256 a, uint256 b) internal pure returns (uint256)
     {
         assert(b <= a);
-
         return a - b;
     }
 
-    function add(uint256 a, uint256 b) internal pure
-    returns (uint256)
+    function add(uint256 a, uint256 b) internal pure returns (uint256)
     {
         uint256 c = a + b;
-
         assert(c >= a);
-
         return c;
     }
 }
@@ -47,7 +43,7 @@ library SafeMath
  */
 contract Ownable
 {
-    address owner;
+    address public owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
@@ -55,14 +51,16 @@ contract Ownable
      * @dev The Ownable constructor sets the original `owner` of the contract to the sender
      * account.
      */
-    function Ownable() public {
+    function Ownable() public
+    {
         owner = msg.sender;
     }
 
     /**
      * @dev Throws if called by any account other than the owner.
      */
-    modifier onlyOwner() {
+    modifier onlyOwner()
+    {
         require(msg.sender == owner);
         _;
     }
@@ -71,16 +69,12 @@ contract Ownable
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
      * @param newOwner The address to transfer ownership to.
      */
-    function transferOwnership(address newOwner) public onlyOwner {
+    function transferOwnership(address newOwner) public onlyOwner
+    {
         require(newOwner != address(0));
         OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
-}
-
-interface tokenRecipient
-{
-    function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public;
 }
 
 contract TokenERC20 is Ownable
@@ -107,14 +101,14 @@ contract TokenERC20 is Ownable
 
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
-    mapping (address => mapping (address => uint256)) public allowance;
+    mapping (address => mapping (address => uint256)) internal allowed;
     mapping (address => bool) frozenAccount;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Burned(uint amount);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     event FrozenFunds(address target, bool frozen);
+    event Burned(address indexed burner, uint256 amount);
 
     /**
      * Constructor function
@@ -143,26 +137,17 @@ contract TokenERC20 is Ownable
      * @param _to - address of the investor
      * @param _value - tokens for the investor
      */
-    function _transfer(address _from, address _to, uint256 _value) internal
+    function _transfer(address _from, address _to, uint256 _value) public returns (bool)
     {
-        // Check if not frozen
         require(!frozenAccount[msg.sender]);
-        // Prevent transfer to 0x0 address. Use burn() instead
-        require(_to != 0x0);
-        // Check if the sender has enough
+        require(_to != address(0));
         require(balanceOf[_from] >= _value);
-        // Check for overflows
         require(balanceOf[_to].add(_value) > balanceOf[_to]);
-        // Save this for an assertion in the future
-        uint previousBalances = balanceOf[_from].add(balanceOf[_to]);
-        // Subtract from the sender
-        balanceOf[_from] = balanceOf[_from].sub(_value);
-        // Add the same to the recipient
-        balanceOf[_to] = balanceOf[_to].add(_value);
 
+        balanceOf[_from] = balanceOf[_from].sub(_value);
+        balanceOf[_to] = balanceOf[_to].add(_value);
         Transfer(_from, _to, _value);
-        // Asserts are used to use static analysis to find bugs in your code. They should never fail
-        assert(balanceOf[_from].add(balanceOf[_to]) == previousBalances);
+        return true;
     }
 
     /**
@@ -190,10 +175,12 @@ contract TokenERC20 is Ownable
     function transferFrom(address _from, address _to, uint256 _value) public
     returns (bool success)
     {
-        require(!frozenAccount[msg.sender]);                 // Check if not frozen
-        require(_value <= allowance[_from][msg.sender]);     // Check allowance
+        require(!frozenAccount[msg.sender]);
+        require(_to != address(0));
+        require(_value <= balanceOf[_from]);
+        require(_value <= allowed[_from][msg.sender]);
 
-        allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);
+        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
         _transfer(_from, _to, _value);
 
         return true;
@@ -210,30 +197,19 @@ contract TokenERC20 is Ownable
     function approve(address _spender, uint256 _value) public
     returns (bool success)
     {
-        allowance[msg.sender][_spender] = _value;
-
+        allowed[msg.sender][_spender] = _value;
+        Approval(msg.sender, _spender, _value);
         return true;
     }
 
     /**
-     * Set allowance for other address and notify
-     *
-     * Allows `_spender` to spend no more than `_value` tokens in your behalf, and then ping the contract about it
-     *
-     * @param _spender The address authorized to spend
-     * @param _value the max amount they can spend
-     * @param _extraData some extra information to send to the approved contract
-     */
-    function approveAndCall(address _spender, uint256 _value, bytes _extraData) public onlyOwner
-    returns (bool success)
-    {
-        tokenRecipient spender = tokenRecipient(_spender);
-
-        if (approve(_spender, _value)) {
-            spender.receiveApproval(msg.sender, _value, this, _extraData);
-
-            return true;
-        }
+    * @dev Function to check the amount of tokens that an owner allowed to a spender.
+    * @param _owner address The address which owns the funds.
+    * @param _spender address The address which will spend the funds.
+    * @return A uint256 specifying the amount of tokens still available for the spender.
+    */
+    function allowance(address _owner, address _spender) public view returns (uint256) {
+        return allowed[_owner][_spender];
     }
 
     /**
@@ -242,29 +218,25 @@ contract TokenERC20 is Ownable
      * the first transaction is mined)
      * From MonolithDAO Token.sol
      */
-    function increaseApproval (address _spender, uint _addedValue) public
+    function increaseApproval(address _spender, uint _addedValue) public
     returns (bool success)
     {
-        allowance[msg.sender][_spender] = allowance[msg.sender][_spender].add(_addedValue);
-
-        Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
+        allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_addedValue);
+        Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
 
         return true;
     }
 
-    function decreaseApproval (address _spender, uint _subtractedValue) public
+    function decreaseApproval(address _spender, uint _subtractedValue) public
     returns (bool success)
     {
-        uint oldValue = allowance[msg.sender][_spender];
-
+        uint oldValue = allowed[msg.sender][_spender];
         if (_subtractedValue > oldValue) {
-            allowance[msg.sender][_spender] = 0;
+            allowed[msg.sender][_spender] = 0;
         } else {
-            allowance[msg.sender][_spender] = oldValue.sub(_subtractedValue);
+            allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
         }
-
-        Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
-
+        Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
         return true;
     }
 
@@ -301,9 +273,11 @@ contract TokenERC20 is Ownable
     {
         // If tokens have not been burned already and the crowdsale ended
         if (!burned && now > icoEndTime) {
+            address burner = msg.sender;
+
             totalSupply = totalSupply.sub(availableSupply);
             balanceOf[this] = balanceOf[this].sub(availableSupply);
-            Burned(availableSupply);
+            Burned(burner, availableSupply);
             availableSupply = 0;
             burned = true;
         }
@@ -374,8 +348,8 @@ contract CryptologiqCrowdsale is Pauseble
     using SafeMath for uint;
 
     uint public stage = 0;
-    uint public softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
-    uint public hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
+    uint public constant softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
+    uint public constant hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
     bool public softcapReached;
     bool public hardcapReached;
     bool public refundIsAvailable;
@@ -384,10 +358,8 @@ contract CryptologiqCrowdsale is Pauseble
 
     event SoftcapReached();
     event HardcapReached();
-    event CrowdSaleFinished(string info);
     event RefundIsAvailable();
-
-    address public ownerWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+    event CrowdSaleFinished(string info);
 
     mapping(address => uint) public balances;
 
@@ -520,11 +492,6 @@ contract CryptologiqCrowdsale is Pauseble
             SoftcapReached();
             softcapReached = true;
         }
-
-        if (tokensSold >= hardcap) {
-            HardcapReached();
-            hardcapReached = true;
-        }
     }
 
     /*
@@ -579,7 +546,9 @@ contract CryptologiqCrowdsale is Pauseble
 
     function refund() public
     {
-        require(refundIsAvailable && balances[msg.sender] > 0);
+        require(refundIsAvailable);
+        require(balances[msg.sender] > 0);
+
         uint value = balances[msg.sender];
         balances[msg.sender] = 0;
         msg.sender.transfer(value);
@@ -588,24 +557,26 @@ contract CryptologiqCrowdsale is Pauseble
     function widthrawOwner(uint256 amount) public onlyOwner
     {
         require(softcapReached);
-        ownerWallet.transfer(amount);
+
+        msg.sender.transfer(amount);
     }
 
-    function finish() public onlyOwner
+    function getRefund() public onlyOwner
     {
-        if (availableSupply < softcap) {
-            RefundIsAvailable();
-            refundIsAvailable = true;
-        } else {
-            widthrawOwner(this.balance);
-        }
+        require(now > icoEndTime);
+        require(!softcapReached);
+
+        refundIsAvailable = true;
+        RefundIsAvailable();
     }
 }
 
 contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
 {
     /* Cryptologiq tokens Constructor */
-    function CryptologiqContract() public TokenERC20(700000000, "CryptologiQ", "LOGIQ") {}
+    function CryptologiqContract() public TokenERC20(700000000, "CryptologiQ", "LOGIQ") {
+
+    }
 
     /**
     * Function payments handler
@@ -615,16 +586,15 @@ contract CryptologiqContract is ERC20Extending, CryptologiqCrowdsale
     {
         assert(msg.value >= 1 ether / 100);
         require(now >= ICO.startDate);
+        require(!paused);
 
-        if ((paused == false) && (now <= ICO.endDate)) {
+        if ((now > ICO.endDate) || (ICO.tokens == 0)) {
             pauseInternal();
             CrowdSaleFinished(crowdSaleStatus());
+            revert();
+        } else {
+            paymentManager(msg.sender, msg.value);
         }
 
-        if (paused == false) {
-            paymentManager(msg.sender, msg.value);
-        } else {
-            revert();
-        }
     }
 }
