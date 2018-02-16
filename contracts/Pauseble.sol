@@ -1,24 +1,23 @@
 pragma solidity ^0.4.18;
 
-import "./TokenERC20.sol";
+import "./Ownable.sol";
 
-contract Pauseble is TokenERC20
+contract Pausable is Ownable
 {
     event EPause();
     event EUnpause();
 
     bool public paused = true;
-    uint public startIcoDate = 0;
-
-    modifier whenNotPaused()
-    {
-        require(!paused);
-        _;
-    }
 
     modifier whenPaused()
     {
         require(paused);
+        _;
+    }
+
+    modifier whenNotPaused()
+    {
+        require(!paused);
         _;
     }
 
@@ -28,16 +27,21 @@ contract Pauseble is TokenERC20
         EPause();
     }
 
-    function pauseInternal() internal
-    {
-        paused = true;
-        EPause();
-    }
-
     function unpause() public onlyOwner
     {
         paused = false;
         EUnpause();
+    }
+
+    function isPaused() view public returns(bool)
+    {
+        return paused;
+    }
+
+    function pauseInternal() internal
+    {
+        paused = true;
+        EPause();
     }
 
     function unpauseInternal() internal

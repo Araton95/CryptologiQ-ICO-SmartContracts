@@ -272,12 +272,11 @@ contract CryptologiqCrowdsale is PausableToken
 {
     using SafeMath for uint;
 
-    uint256 public decimals = 18;
     uint256 DEC = 10 ** uint256(decimals);
     uint256 public buyPrice = 1000000000000000000 wei;
 
     uint public stage = 0;
-    uint256 public weisRaised;
+    uint256 public weisRaised = 0;
     uint256 public tokensSold = 0;
 
     uint public ICOdeadLine = 1530392400; // ICO end time - Sunday, 1 July 2018, 00:00:00.
@@ -293,7 +292,6 @@ contract CryptologiqCrowdsale is PausableToken
     uint256 public constant hardcap = 420000000e18;
 
     bool public softcapReached;
-    bool public hardcapReached;
     bool public refundIsAvailable;
     bool public burned;
 
@@ -337,12 +335,9 @@ contract CryptologiqCrowdsale is PausableToken
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (3 == stage) {
-            if (now <= ICO.startDate + 1 days)
-            {
+            if (now <= ICO.startDate + 1 days) {
                 _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
-            }
-            else
-            {
+            } else {
                 _amount = _amount.add(withDiscount(_amount, ICO.discount));
             }
         }
@@ -395,8 +390,6 @@ contract CryptologiqCrowdsale is PausableToken
 
     function paymentManager(address sender, uint256 value) internal
     {
-        require(!frozenAccount[sender]);
-
         uint256 discountValue = countDiscount(value);
         require(confirmSell(discountValue));
 
@@ -408,6 +401,12 @@ contract CryptologiqCrowdsale is PausableToken
         if ((tokensSold >= softcap) && !softcapReached) {
             softcapReached = true;
             SoftcapReached();
+        }
+
+        if (tokensSold == hardcap) {
+            pauseInternal();
+            HardcapReached();
+            CrowdSaleFinished(crowdSaleStatus());
         }
     }
 
@@ -468,8 +467,10 @@ contract CryptologiqCrowdsale is PausableToken
         Burned(burner, balances[this]);
     }
 
+    // Need discuss with Zorayr
     function transferTokensFromContract(address _to, uint256 _value) public onlyOwner
     {
+        ICO.tokens = ICO.tokens.sub(_value);
         balances[this] = balances[this].sub(_value);
         _transfer(this, _to, _value);
     }

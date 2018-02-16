@@ -1,4 +1,4 @@
-var Migrations = artifacts.require("./CryptologiqContract.sol");
+var Migrations = artifacts.require("./CryptologiQ.sol");
 
 module.exports = function(deployer) {
   deployer.deploy(Migrations);

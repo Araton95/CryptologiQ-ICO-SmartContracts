@@ -1,28 +1,41 @@
 pragma solidity ^0.4.18;
 
 import "./SafeMath.sol";
-import "./Pauseble.sol";
+import "./PausableToken.sol";
 
-contract CryptologiqCrowdsale is Pauseble
+contract CryptologiqCrowdsale is PausableToken
 {
     using SafeMath for uint;
 
+    uint256 DEC = 10 ** uint256(decimals);
+    uint256 public buyPrice = 1000000000000000000 wei;
+
     uint public stage = 0;
-    uint public softcap = 85000000e18;   // Softcap - 85,000,000 LOGIQ
-    uint public hardcap = 420000000e18;  // HardCap - 420,000,000 LOGIQ
+    uint256 public weisRaised = 0;
+    uint256 public tokensSold = 0;
+
+    uint public ICOdeadLine = 1530392400; // ICO end time - Sunday, 1 July 2018, 00:00:00.
+
+    mapping (address => uint256) public deposited;
+
+    modifier afterDeadline {
+        require(now > ICOdeadLine);
+        _;
+    }
+
+    uint256 public constant softcap = 85000000e18;
+    uint256 public constant hardcap = 420000000e18;
+
     bool public softcapReached;
     bool public refundIsAvailable;
-    uint256 public weisRaised;  // how many weis was raised on crowdsale
-    uint256 public tokensSold = 0;  // how many tokens was sold on crowdsale
+    bool public burned;
 
     event SoftcapReached();
     event HardcapReached();
+    event RefundsEnabled();
+    event Refunded(address indexed beneficiary, uint256 weiAmount);
     event CrowdSaleFinished(string info);
-    event RefundIsAvailable();
-
-    address public ownerWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
-
-    mapping(address => uint) public balances;
+    event Burned(address indexed burner, uint256 amount);
 
     struct Ico {
         uint256 tokens;             // Tokens in crowdsale
@@ -34,10 +47,6 @@ contract CryptologiqCrowdsale is Pauseble
 
     Ico public ICO;
 
-    /*
-    * Function confirm autosell
-    *
-    */
     function confirmSell(uint256 _amount) internal view
     returns(bool)
     {
@@ -48,9 +57,6 @@ contract CryptologiqCrowdsale is Pauseble
         return true;
     }
 
-    /*
-    *  Make discount
-    */
     function countDiscount(uint256 amount) internal view
     returns(uint256)
     {
@@ -64,12 +70,9 @@ contract CryptologiqCrowdsale is Pauseble
             _amount = _amount.add(withDiscount(_amount, ICO.discount));
         }
         else if (3 == stage) {
-            if (now <= ICO.startDate + 1 days)
-            {
+            if (now <= ICO.startDate + 1 days) {
                 _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
-            }
-            else
-            {
+            } else {
                 _amount = _amount.add(withDiscount(_amount, ICO.discount));
             }
         }
@@ -80,10 +83,6 @@ contract CryptologiqCrowdsale is Pauseble
         return _amount;
     }
 
-    /**
-    * Function for change discount if need
-    *
-    */
     function changeDiscount(uint8 _discount) public onlyOwner
     returns (bool)
     {
@@ -91,14 +90,6 @@ contract CryptologiqCrowdsale is Pauseble
         return true;
     }
 
-    /**
-    * Expanding of the functionality
-    *
-    * @param _numerator - Numerator - value (10000)
-    * @param _denominator - Denominator - value (10000)
-    *
-    * example: price 1000 tokens by 1 ether = changeRate(1, 1000)
-    */
     function changeRate(uint256 _numerator, uint256 _denominator) public onlyOwner
     returns (bool success)
     {
@@ -110,10 +101,6 @@ contract CryptologiqCrowdsale is Pauseble
         return true;
     }
 
-    /*
-    * Function show in contract what is now
-    *
-    */
     function crowdSaleStatus() internal constant
     returns (string)
     {
@@ -136,105 +123,90 @@ contract CryptologiqCrowdsale is Pauseble
         return "there is no stage at present";
     }
 
-    /*
-    * Sales manager
-    *
-    */
     function paymentManager(address sender, uint256 value) internal
     {
         uint256 discountValue = countDiscount(value);
         require(confirmSell(discountValue));
 
         sell(sender, discountValue);
+        deposited[sender] = deposited[sender].add(value);
         weisRaised = weisRaised.add(value);
         tokensSold = tokensSold.add(discountValue);
 
-        if (now >= ICO.endDate) {
-            pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus()); // if time is up
-        }
-
-        if (tokensSold >= softcap && !softcapReached) {
-            SoftcapReached();
+        if ((tokensSold >= softcap) && !softcapReached) {
             softcapReached = true;
+            SoftcapReached();
         }
 
-        if (tokensSold >= hardcap) {
+        if (tokensSold == hardcap) {
+            pauseInternal();
             HardcapReached();
+            CrowdSaleFinished(crowdSaleStatus());
         }
     }
 
-    /*
-    * Function for selling tokens in crowd time.
-    *
-    */
     function sell(address _investor, uint256 _amount) internal
     {
         ICO.tokens = ICO.tokens.sub(_amount);
-        availableSupply = availableSupply.sub(_amount);
-
         _transfer(this, _investor, _amount);
+        Transfer(this, _investor, _amount);
     }
 
-    /*
-    * Function for start crowdsale (any)
-    *
-    * @param _tokens - How much tokens will have the crowdsale - amount humanlike value (10000)
-    * @param _startDate - When crowdsale will be start - unix timestamp (1512231703 )
-    * @param _endDate - When crowdsale will be end - humanlike value (7) same as 7 days
-    * @param _discount - Discount for the crowd - humanlive value (7) same as 7 %
-    * @param _discount - Discount for the crowds first day - humanlive value (7) same as 7 %
-    */
     function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
     {
-        require(_tokens * DEC <= availableSupply);  // require to set correct tokens value for crowd
+        require(_tokens * DEC <= balances[this]);
+
         ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
         stage = stage.add(1);
         unpauseInternal();
     }
 
-    /**
-    * Function for web3js, should be call when somebody will buy tokens from website. This function only delegator.
-    *
-    * @param _investor - address of investor (who payed)
-    * @param _amount - ethereum
-    */
     function transferWeb3js(address _investor, uint256 _amount) external onlyOwner
     {
         sell(_investor, _amount);
     }
 
-    /**
-    * Function for adding discount
-    *
-    */
     function withDiscount(uint256 _amount, uint _percent) internal pure
     returns (uint256)
     {
         return (_amount.mul(_percent)).div(100);
     }
 
-    function refund() public
+    function enableRefund() public afterDeadline
     {
-        require(refundIsAvailable && balances[msg.sender] > 0);
-        uint value = balances[msg.sender];
-        msg.sender.transfer(value);
-        balances[msg.sender] = 0;
+        require(!softcapReached);
+
+        refundIsAvailable = true;
+        RefundsEnabled();
     }
 
-    function widthrawOwner(uint256 amount) public onlyOwner
+    function getMyRefund() public afterDeadline
     {
-        require(softcapReached);
-        ownerWallet.transfer(amount);
+        require(refundIsAvailable);
+        require(deposited[msg.sender] > 0);
+
+        uint256 depositedValue = deposited[msg.sender];
+        deposited[msg.sender] = 0;
+        msg.sender.transfer(depositedValue);
+        Refunded(msg.sender, depositedValue);
     }
 
-    function finish() public onlyOwner
+    function burnAfterICO() public afterDeadline
     {
-        if (availableSupply < softcap) {
-            RefundIsAvailable();
-            refundIsAvailable = true;
-        } else {
-            widthrawOwner(this.balance);
-        }
+        require(!burned);
+
+        address burner = msg.sender;
+        totalSupply = totalSupply.sub(balances[this]);
+        balances[this] = balances[this].sub(balances[this]);
+        burned = true;
+        Burned(burner, balances[this]);
+    }
+
+    // Need discuss with Zorayr
+    function transferTokensFromContract(address _to, uint256 _value) public onlyOwner
+    {
+        ICO.tokens = ICO.tokens.sub(_value);
+        balances[this] = balances[this].sub(_value);
+        _transfer(this, _to, _value);
     }
 }
