@@ -404,7 +404,6 @@ contract CryptologiqCrowdsale is PausableToken
         }
 
         if (tokensSold == hardcap) {
-            pauseInternal();
             HardcapReached();
             CrowdSaleFinished(crowdSaleStatus());
         }
@@ -421,7 +420,7 @@ contract CryptologiqCrowdsale is PausableToken
     {
         require(_tokens * DEC <= balances[this]);
 
-        ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
+        ICO = Ico (_tokens * DEC, _startDate, _endDate, _discount, _discountFirstDayICO); // _startDate + _endDate * 1 days
         stage = stage.add(1);
         unpauseInternal();
     }
@@ -470,9 +469,12 @@ contract CryptologiqCrowdsale is PausableToken
     // Need discuss with Zorayr
     function transferTokensFromContract(address _to, uint256 _value) public onlyOwner
     {
+        require(confirmSell(_value));
+
         ICO.tokens = ICO.tokens.sub(_value);
         balances[this] = balances[this].sub(_value);
         _transfer(this, _to, _value);
+        tokensSold = tokensSold.add(_value);
     }
 }
 
@@ -480,10 +482,10 @@ contract CryptologiQ is CryptologiqCrowdsale
 {
     using SafeMath for uint;
 
-    address public companyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
-    address public internalExchangeWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
-    address public bountyWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
-    address public tournamentsWallet = 0xD5B93C49c4201DB2A674A7d0FC5f3F733EBaDe80;
+    address public companyWallet = 0x14723A09ACff6D2A60DcdF7aA4AFf308FDDC160C;
+    address public internalExchangeWallet = 0x14723A09ACff6D2A60DcdF7aA4AFf308FDDC160C;
+    address public bountyWallet = 0x14723A09ACff6D2A60DcdF7aA4AFf308FDDC160C;
+    address public tournamentsWallet = 0x14723A09ACff6D2A60DcdF7aA4AFf308FDDC160C;
 
     function CryptologiQ() public
     {
@@ -502,18 +504,13 @@ contract CryptologiQ is CryptologiqCrowdsale
 
     function () public payable
     {
-        require(now >= ICO.startDate);
+        // Need discuss with Zorayr ( pause all transactions between ico phases stage or not ?)
         require(now < ICOdeadLine);
+        require(ICO.startDate <= now);
+        require(ICO.endDate > now);
+        require(ICO.tokens != 0);
 
         assert(msg.value >= 1 ether / 100);
-
-        if ((now > ICO.endDate) || (ICO.tokens == 0)) {
-            pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus());
-
-            revert();
-        } else {
-            paymentManager(msg.sender, msg.value);
-        }
+        paymentManager(msg.sender, msg.value);
     }
 }
