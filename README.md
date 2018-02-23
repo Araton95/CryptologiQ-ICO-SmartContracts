@@ -73,7 +73,7 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 
 `sell(address _investor, uint256 _amount)` - Sell tokens to investor
 
-`countDiscount(uint256 amount)` - Count discounted price before sell it investor (internal)
+`countDiscount(uint256 amount)` - Count discounted price before sell it to investor (internal)
 
 `transferWeb3js(address _investor, uint256 _amount)` - Pass info to website (only owner)
 
