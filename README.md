@@ -37,7 +37,7 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 
 `balanceOf(address _owner)` - Gets the balance of the specified address
 
-`transferOwnership(address newOwner)` - Allows the current owner to transfer control of the contract to a newOwner
+`transferOwnership(address newOwner)` - Allows the current owner to transfer control of the contract to a newOwner (only owner) 
 
 `transfer(address _to, uint256 _value)` - Transfer token for a specified address
 
@@ -51,15 +51,15 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 
 `decreaseApproval(address _spender, uint _subtractedValue)` - Decrease the amount of tokens that an owner allowed to a spender
 
-`startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO)` - Start ICO phase
+`startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO)` - Start ICO phase (only owner)
 
-`changeRate(uint256 _numerator, uint256 _denominator)` - Change eth/token price rent (can call only owner)
+`changeRate(uint256 _numerator, uint256 _denominator)` - Change eth/token price rent (only owner)
 
-`changeDiscount(uint8 _discount)` - Chage discount(bonus) price
+`changeDiscount(uint8 _discount)` - Chage discount (bonus) size (only owner)
 
-`pause()` - Pause all functions (can call only owner)
+`pause()` - Pause all functions (only owner)
 
-`unpause()` - Unpause all functions (can call only owner of smart contract)
+`unpause()` - Unpause all functions (only owner)
 
 `burnAfterICO()` - Burn all remaining tokens after ICO (can call everyone)
 
@@ -67,16 +67,16 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 
 `getMyRefund()` - Get own refund after ICO finish (if softcap didn't reached)
 
-`freezeAccount(address target)` - Freeze transaction for target account (can call only owner)
+`freezeAccount(address target)` - Freeze transaction for target account (only owner)
 
-`unFreezeAccount(address target)` - Unfreeze transaction for target account (can call only owner)
+`unFreezeAccount(address target)` - Unfreeze transaction for target account (only owner)
 
 `sell(address _investor, uint256 _amount)` - Sell tokens to investor
 
-`countDiscount(uint256 amount)` - Count discounted price before sell it investor
+`countDiscount(uint256 amount)` - Count discounted price before sell it investor (internal)
 
-`transferWeb3js(address _investor, uint256 _amount)` - Pass info to website
+`transferWeb3js(address _investor, uint256 _amount)` - Pass info to website (only owner)
 
-`transferEthFromContract(address _to, uint256 _amaunt)` - Transfer ETH from smart contract (can call only owner)
+`transferEthFromContract(address _to, uint256 _amaunt)` - Transfer ETH from smart contract (only owner)
 
-`transferTokensFromContract(address _to, uint256 _value)` - Transfer LOGIQ from smart contract (can call only owner)
+`transferTokensFromContract(address _to, uint256 _value)` - Transfer LOGIQ from smart contract (only owner)
