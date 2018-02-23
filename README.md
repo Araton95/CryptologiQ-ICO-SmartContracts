@@ -9,8 +9,25 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 
 ## Token
 
-| First Header  | Second Header |
+| Token symbol  | LOGIQ |
 | ------------- | ------------- |
-| Content Cell  | Content Cell  |
-| Content Cell  | Content Cell  |
+| Token name  | CryptologiQ token  |
+| Token type  | Utlity token  |
+| Total fixed supply | 700,000,000 LOGIQ |
+| Initial price | 1 ETH = 24,000 LOGIQ |
    
+## Smart contracts
+
+* SafeMath (Library)
+* Ownable
+* BasicToken
+* ERC20
+* ERC20Basic
+* FreezableToken
+* PausableToken
+* StandardToken
+* CryptologiqCrowdsale
+* CryptologiQ
+
+## Functions
+
