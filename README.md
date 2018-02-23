@@ -4,10 +4,10 @@
 [![Platform](https://img.shields.io/badge/Standard-ERC20-blue.svg)](https://en.wikipedia.org/wiki/ERC20)
 [![Platform](https://img.shields.io/badge/Compiler-^0.4.18-yellow.svg)](http://solidity.readthedocs.io/en/v0.4.18/)
 
-## Description
+## Description :thought_balloon:
 The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20">ERC20</a> token created on the <a href="https://en.wikipedia.org/wiki/Ethereum">Ethereum</a> blockchain platform and build on <a href="http://truffleframework.com/">truffle framework </a>. The LOGIQ serves as a payment tool within the CryptologiQ ecosystem. 
 
-## Token
+## Token :game_die:
 
 | Token symbol  | LOGIQ |
 | ------------- | ------------- |
@@ -16,7 +16,7 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 | Total fixed supply | 700,000,000 LOGIQ |
 | Initial price | 1 ETH = 24,000 LOGIQ |
    
-## Smart contracts
+## Smart contracts :computer:
 
 * SafeMath (Library)
 * Ownable
@@ -29,7 +29,7 @@ The CryptologiQ Token (LOGIQ) is an <a href="https://en.wikipedia.org/wiki/ERC20
 * CryptologiqCrowdsale
 * CryptologiQ
 
-## Functions
+## Functions :wrench:
 
 `mul, div, add, sub` - Math operations with safety checks that throw on error
 
